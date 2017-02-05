@@ -95,8 +95,8 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 
 	// TODO 8: roll the dice, but before that, read a seed from the parent via pipe
   int readInfo = read(seed_fd_rd, &seed, sizeof(int));
-  perror("read() failed");
-  printf("Seed in commons: %i\n Pipe: %i\n readinfo: %i\n", seed, seed_fd_rd, readInfo);
+  /* perror("read() failed"); */
+  printf("Seed in commons: %i\n readinfo: %i\n", seed, readInfo);
 
   srand(seed);
 
@@ -107,8 +107,8 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 
 	// TODO 9: send my score back to the master via pipe
   
-  write(score_fd_wr, &score, sizeof(int));
-
+  int writeInfo = write(score_fd_wr, &score, sizeof(int));
+  /* printf("WriteInfo in Commons: %i\n", writeInfo); */
 	// spin while I wait for the results
 	while (!results) ;
 
@@ -120,7 +120,8 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 
 
 	// TODO 10: free resources and exit with success
-
+  close(seed_fd_rd);
+  close(score_fd_wr);
   sleep(55);
 	exit(EXIT_SUCCESS);
 }

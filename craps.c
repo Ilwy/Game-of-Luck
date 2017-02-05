@@ -46,16 +46,20 @@ int main(int argc, char *argv[])
   int seed_pipes[NUM_PLAYERS][2];
   int score_pipes[NUM_PLAYERS][2];
 	// TODO 3: initialize the communication with the players, i.e. create the pipes
+  int pipeMsg = 0;
   for (i = 0; i < NUM_PLAYERS; i++) {
-    pipe(seed_pipes[i]);
+    pipeMsg = pipe(seed_pipes[i]);
+    if(pipeMsg != 0)
+      printf("bug when opening pipe: %i\n", pipeMsg);
     pipe(score_pipes[i]);
-    seed_pipes[i][0] = 3;
-    seed_pipes[i][1] = 4;
-    score_pipes[i][0] = 3;
-    score_pipes[i][1] = 4;
+    if(pipeMsg != 0)
+      printf("bug when opening pipe: %i\n", pipeMsg);
+    /* seed_pipes[i][0] = 3; */
+    /* seed_pipes[i][1] = 4; */
+    /* score_pipes[i][0] = 3; */
+    /* score_pipes[i][1] = 4; */
 
 	}
-
 
 	// TODO 4: spawn/fork the processes that simulate the players
 	//         - check if players were successfully spawned
@@ -79,25 +83,24 @@ int main(int argc, char *argv[])
       }
       shooter(i, seed_pipes[i][0], score_pipes[i][1]);
     }
-    else{
-      for(int j = 0; j<NUM_PLAYERS; ++j){
-        close(seed_pipes[j][0]);
-        close(score_pipes[j][1]);
-      }
-    }
   }
 
+  for(int j = 0; j<NUM_PLAYERS; ++j){
+    close(seed_pipes[j][0]);
+    close(score_pipes[j][1]);
+  }
 
 	seed = time(NULL);
 
-
+  
 	for (i = 0; i < NUM_PLAYERS; i++) {
 		seed++;
-    printf("Seed in craps: %i\n Pipe: %i\n", seed, seed_pipes[i][1]);
+    printf("Seed in craps: %i\n", seed);
 
     // TODO 5: send the seed to the players (write using pipes)
     int writeResult = write(seed_pipes[i][1], &seed, sizeof(int));
-    perror("write() failed");
+    printf("Write: %i\n", writeResult);
+    /* perror("write() failed"); */
   }
 
 
