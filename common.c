@@ -27,7 +27,7 @@
 volatile sig_atomic_t winner = 0;
 
 // TODO 1: Change this to 0 to make the children spin in the for loop before they receive the SIGUSR2 signal
-volatile sig_atomic_t results = 1;
+volatile sig_atomic_t results = 0;
 
 
 // end_handler - handle the SIGUSR2 signal, the player will receive
@@ -39,12 +39,13 @@ volatile sig_atomic_t results = 1;
 void end_handler(int signum)
 {
   // TODO 2: Check that the signum is indeed SIGUSR2, otherwise exit with failure
-
+  if(signum != SIGUSR2)
+    EXIT_FAILURE;
 	
   // TODO 3: "leave the game": make the appropriate changes to let the current process exit
   //         - use the "results" flag declared earlier
-
-
+  results = 1;
+  /* printf("IGETHERETOOO END HANDLER\n"); */
   // register the signal handler for the next use
   signal (signum, end_handler);
 }
@@ -58,11 +59,13 @@ void end_handler(int signum)
 void win_handler(int signum)
 {
   // TODO 4: Check that the signum is indeed SIGUSR1, otherwise exit with failure
-
+  if(signum != SIGUSR1)
+    EXIT_FAILURE;
 
   // TODO 5: this player is the winner, make the appropriate changes upon reception of this singal
   //         - use the "results" flag declared earlier
-
+  winner = 1;
+  results = 1;
 
   // register the signal handler for the next use
   signal(signum, win_handler);
@@ -82,10 +85,9 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 
 
 	// TODO 6: Install SIGUSR1 handler
-
-
+  signal(SIGUSR1, win_handler);
 	// TODO 7: Install SIGUSR2 handler
-
+  signal(SIGUSR2, end_handler);
 
 	pid = getpid();
 
@@ -96,21 +98,23 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 	// TODO 8: roll the dice, but before that, read a seed from the parent via pipe
   int readInfo = read(seed_fd_rd, &seed, sizeof(int));
   /* perror("read() failed"); */
-  printf("Seed in commons: %i\n readinfo: %i\n", seed, readInfo);
+  /* printf("Seed in commons: %i\n readinfo: %i\n", seed, readInfo); */
 
   srand(seed);
 
 	score = rand() % 10000;
-  
+  /* printf("Score in common.c: %i, Process: %i\n", score, id); */
 	fprintf(stderr, "player %d: I scored %d (PID = %ld)\n", id, score, (long)pid);
 
 
 	// TODO 9: send my score back to the master via pipe
   
   int writeInfo = write(score_fd_wr, &score, sizeof(int));
+  if(writeInfo<0)
+    perror("write() failure");
   /* printf("WriteInfo in Commons: %i\n", writeInfo); */
 	// spin while I wait for the results
-	while (!results) ;
+	while (!results);
 
 	if (winner)
 		fprintf(stderr, "player %d: Walking away rich\n", id);
@@ -122,7 +126,7 @@ void shooter(int id, int seed_fd_rd, int score_fd_wr)
 	// TODO 10: free resources and exit with success
   close(seed_fd_rd);
   close(score_fd_wr);
-  sleep(55);
+  /* sleep(55); */
 	exit(EXIT_SUCCESS);
 }
 

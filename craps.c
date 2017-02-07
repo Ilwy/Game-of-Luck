@@ -34,9 +34,10 @@ int main(int argc, char *argv[])
 	//         exec system call. Using the function sprintf and the arg1 
 	//         variable you can pass the id parameter to the children 
 
-	// char arg0[] = "./shooter"; 
-	// char arg1[10]; 
-	// char *args[] = {arg0, arg1, NULL};
+	char arg0[] = "./shooter";
+	/* char arg1[NUM_PLAYERS]; */
+  char arg1[10];
+	char *args[] = {arg0, arg1, NULL};
 	
 
 	// TODO 2: Declare pipe variables
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
 	//         - Try to choose self-explanatory variable names, e.g. seedPipe, scorePipe
   int seed_pipes[NUM_PLAYERS][2];
   int score_pipes[NUM_PLAYERS][2];
+  int children_pids[NUM_PLAYERS];
 	// TODO 3: initialize the communication with the players, i.e. create the pipes
   int pipeMsg = 0;
   for (i = 0; i < NUM_PLAYERS; i++) {
@@ -69,10 +71,10 @@ int main(int argc, char *argv[])
 	//         - pass arguments using args and sprintf
 
 	for (i = 0; i < NUM_PLAYERS; i++) {
-    int pid = fork();
-    assert(pid>=0);
-
-    if(pid == 0){
+    children_pids[i] = fork();
+    assert(children_pids[i]>=0);
+    sprintf(arg1, "%d", i);
+    if(children_pids[i] == 0){
       for(int j = 0; j<NUM_PLAYERS; ++j){
         close(seed_pipes[j][1]);
         close(score_pipes[j][0]);
@@ -80,8 +82,12 @@ int main(int argc, char *argv[])
           close(score_pipes[j][1]);
           close(seed_pipes[j][0]);
         }
+        dup2(seed_pipes[i][0], STDIN_FILENO);
+        dup2(score_pipes[i][1], STDOUT_FILENO);
+        int execReturn = execv(arg0, args);
+        printf("Execreturnvalue:%i ", execReturn);
       }
-      shooter(i, seed_pipes[i][0], score_pipes[i][1]);
+      /* shooter(i, seed_pipes[i][0], score_pipes[i][1]); */
     }
   }
 
@@ -95,40 +101,48 @@ int main(int argc, char *argv[])
   
 	for (i = 0; i < NUM_PLAYERS; i++) {
 		seed++;
-    printf("Seed in craps: %i\n", seed);
+    /* printf("Seed in craps: %i\n", seed); */
 
     // TODO 5: send the seed to the players (write using pipes)
     int writeResult = write(seed_pipes[i][1], &seed, sizeof(int));
-    printf("Write: %i\n", writeResult);
+    if(writeResult <=0 ){
+      perror("write() error 104");
+    }
+    /* printf("Write: %i\n", writeResult); */
     /* perror("write() failed"); */
   }
 
 
 	// TODO 6: read the dice results from the players via pipes, find the winner
 
-  int maxScore, score = 0;
+  int maxScore = 0, score, winner;
 	for (i = 0; i < NUM_PLAYERS; i++) {
     read(score_pipes[i][0], &score, sizeof(int));
-    if (maxScore<score)
+    /* printf("Score in craps.c:%i, process: %i \n", score, i); */
+    if (maxScore<score){
       maxScore = score;
+      winner = i;
+    }
   }
 
-
-	printf("master: player %d WINS\n", winner);
+	printf("master: player %d WINS with a score of: %i \n",winner, maxScore);
 
 
 	// TODO 7: signal the winner
 	//         - which command do you use to send signals?
 	//         - you will need the pid of the winner
-
+  kill(children_pids[winner], SIGUSR1);
 	
 
 	// TODO 8: signal all players the end of game
 	//         - you will need the pid of all the players
 
 	for (i = 0; i < NUM_PLAYERS; i++) {
-
-	}
+    if(i != winner){
+      kill(children_pids[i], SIGUSR2);
+      /* printf("IGETHEREHHELLOOOO pid: %i\n", children_pids[i]); */
+    }
+  }
 
 
 	printf("master: the game ends\n");
